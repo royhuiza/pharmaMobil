@@ -12,6 +12,11 @@ import pe.edu.upeu.pharmamobil.data.local.AlmacenSeguro
 import pe.edu.upeu.pharmamobil.domain.model.Credenciales
 import pe.edu.upeu.pharmamobil.domain.model.Sesion
 import pe.edu.upeu.pharmamobil.domain.repository.AuthRepository
+import io.ktor.client.plugins.auth.authProvider
+import io.ktor.client.plugins.auth.providers.BearerAuthProvider
+import io.ktor.client.request.get
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.http.HttpStatusCode
 
 @Serializable
 private data class LoginRequest(
@@ -69,13 +74,41 @@ class AuthRepositorioRest(
         return sesion
     }
 
+
     override suspend fun sesionGuardada(): Sesion? {
-        if (almacen.leerToken() == null) return null
-        return sesionActual
+        val token = almacen.leerToken() ?: return null
+
+        return try {
+            cliente.get(
+                "${urlBase.trimEnd('/')}/auth/me"
+            )
+
+            sesionActual ?: Sesion(
+                token = token,
+                usuario = "",
+                nombreCompleto = "",
+                permisos = emptySet()
+            ).also {
+                sesionActual = it
+            }
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.Unauthorized) {
+                cerrarSesion()
+                null
+            } else {
+                throw e
+            }
+        }
     }
+
+
 
     override suspend fun cerrarSesion() {
         almacen.borrarToken()
         sesionActual = null
+
+        cliente.authProvider<BearerAuthProvider>()
+            ?.clearToken()
     }
+
 }

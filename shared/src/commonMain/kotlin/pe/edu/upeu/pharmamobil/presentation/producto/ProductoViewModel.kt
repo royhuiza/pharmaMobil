@@ -328,6 +328,13 @@ class ProductoViewModel(
 
             is ErrorApiException -> {
                 when (fallo.error) {
+
+                    ErrorApi.NoAutorizado ->
+                        "Tu sesión no es válida o ha expirado. Inicia sesión nuevamente."
+
+                    ErrorApi.AccesoProhibido ->
+                        "No tienes permisos para realizar esta operación."
+
                     is ErrorApi.Validacion ->
                         "Los datos enviados no son válidos"
 

@@ -59,7 +59,10 @@ import pe.edu.upeu.pharmamobil.presentation.components.EstadoVacio
 import pe.edu.upeu.pharmamobil.presentation.inicio.InicioScreen
 import pe.edu.upeu.pharmamobil.presentation.producto.ProductoScreen
 import pe.edu.upeu.pharmamobil.theme.PharmaMobilTheme
-
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.remember
+import pe.edu.upeu.pharmamobil.presentation.auth.LoginViewModel
 private data class Destino(
     val screen: Screen,
     val titulo: String,
@@ -81,7 +84,30 @@ private val ScreenSaver = Saver<Screen, Int>(
 @Composable
 fun App() = KoinContext {
     val authRepository: AuthRepository = koinInject()
-    var autenticado by rememberSaveable { mutableStateOf(false) }
+    val loginViewModel: LoginViewModel = koinViewModel()
+
+    var autenticado by remember {
+        mutableStateOf(false)
+    }
+
+    var comprobandoSesion by remember {
+        mutableStateOf(true)
+    }
+
+
+
+
+    LaunchedEffect(authRepository) {
+        try {
+            autenticado = authRepository.sesionGuardada() != null
+        } catch (e: Exception) {
+            autenticado = false
+        } finally {
+            comprobandoSesion = false
+        }
+    }
+
+
     var pantallaActual by rememberSaveable(stateSaver = ScreenSaver) {
         mutableStateOf(Screen.Inicio)
     }
@@ -90,13 +116,23 @@ fun App() = KoinContext {
     val scope = rememberCoroutineScope()
 
     PharmaMobilTheme(darkTheme = darkTheme) {
-        if (!autenticado) {
-            LoginScreen(
-                alIniciarSesion = {
-                    autenticado = true
-                    pantallaActual = Screen.Inicio
-                }
-            )
+
+        if (comprobandoSesion) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (!autenticado)
+            {
+                LoginScreen(
+                    alIniciarSesion = {
+                        autenticado = true
+                        pantallaActual = Screen.Inicio
+                    },
+                    viewModel = loginViewModel
+                )
         } else {
             ModalNavigationDrawer(
                 drawerState = drawerState,
@@ -129,12 +165,19 @@ fun App() = KoinContext {
                         )
                         Button(
                             onClick = {
+
                                 scope.launch {
-                                    authRepository.cerrarSesion()
-                                    drawerState.close()
-                                    pantallaActual = Screen.Inicio
-                                    autenticado = false
+                                    try {
+                                        authRepository.cerrarSesion()
+                                    } finally {
+                                        loginViewModel.reiniciarEstado()
+                                        pantallaActual = Screen.Inicio
+                                        autenticado = false
+                                        drawerState.close()
+                                    }
                                 }
+
+
                             },
                             modifier = Modifier.fillMaxWidth().padding(16.dp)
                         ) {

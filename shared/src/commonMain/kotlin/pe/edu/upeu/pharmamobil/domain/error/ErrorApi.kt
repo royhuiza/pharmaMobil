@@ -1,3 +1,4 @@
+
 package pe.edu.upeu.pharmamobil.domain.error
 
 sealed interface ErrorApi {
@@ -5,6 +6,10 @@ sealed interface ErrorApi {
     data class Validacion(
         val campos: Map<String, String>
     ) : ErrorApi
+
+    data object NoAutorizado : ErrorApi
+
+    data object AccesoProhibido : ErrorApi
 
     data object NoEncontrado : ErrorApi
 

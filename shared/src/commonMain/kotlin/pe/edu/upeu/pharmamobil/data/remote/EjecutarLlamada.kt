@@ -24,11 +24,16 @@ suspend fun <T> ejecutarLlamada(
             e.response.body<ErrorResponseDto>()
         }.getOrNull()
 
+
         val error = when (e.response.status.value) {
 
             400 -> ErrorApi.Validacion(
                 campos = errorDto?.validationErrors.orEmpty()
             )
+
+            401 -> ErrorApi.NoAutorizado
+
+            403 -> ErrorApi.AccesoProhibido
 
             404 -> ErrorApi.NoEncontrado
 
@@ -36,6 +41,7 @@ suspend fun <T> ejecutarLlamada(
 
             else -> ErrorApi.Servidor
         }
+
 
         throw ErrorApiException(error)
 

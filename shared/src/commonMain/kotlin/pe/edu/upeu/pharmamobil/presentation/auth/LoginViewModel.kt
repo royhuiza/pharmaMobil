@@ -46,4 +46,9 @@ class LoginViewModel(
             }
         }
     }
+
+    fun reiniciarEstado() {
+        _estado.value = LoginEstado()
+    }
+
 }

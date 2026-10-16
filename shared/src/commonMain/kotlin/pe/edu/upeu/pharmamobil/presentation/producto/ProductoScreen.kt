@@ -68,7 +68,22 @@ fun ProductoScreen(
             MensajeExito(it)
         }
 
-        EncabezadoInventario(uiState.fase)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                EncabezadoInventario(uiState.fase)
+            }
+
+            OutlinedButton(
+                onClick = viewModel::cargarProductos,
+                enabled = uiState.fase !is ProductoUiState.Fase.Cargando
+            ) {
+                Text("Actualizar lista")
+            }
+        }
 
         Box(
             modifier = Modifier
