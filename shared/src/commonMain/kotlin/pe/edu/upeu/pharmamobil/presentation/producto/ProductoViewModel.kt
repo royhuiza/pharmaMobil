@@ -147,7 +147,7 @@ class ProductoViewModel(
                 formulario = FormularioProducto(
                     nombre = producto.nombre,
                     precio = producto.precio
-                        .removePrefix("S/ ")
+                        .replace("S/", "")
                         .trim(),
                     stock = producto.stock
                         .removeSuffix(" u.")

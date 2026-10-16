@@ -41,12 +41,17 @@ kotlin {
     }
     
     sourceSets {
+
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
             implementation(libs.ktor.client.okhttp)
-            // api: MainApplication (androidApp) usa androidContext() al arrancar Koin.
+
+            // Koin para Android
             api(libs.koin.android)
+
+            // Almacenamiento cifrado del token JWT
+            implementation("androidx.security:security-crypto:1.1.0-alpha06")
         }
         commonMain.dependencies {
             // api: androidApp llama a initKoin(), cuya firma expone KoinAppDeclaration.
@@ -67,6 +72,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation("io.ktor:ktor-client-auth:3.2.3")
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

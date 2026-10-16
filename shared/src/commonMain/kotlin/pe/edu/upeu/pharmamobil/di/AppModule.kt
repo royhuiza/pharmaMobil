@@ -24,12 +24,16 @@ import pe.edu.upeu.pharmamobil.domain.usecase.RegistrarProductoUseCase
 
 import pe.edu.upeu.pharmamobil.presentation.cliente.ClienteViewModel
 import pe.edu.upeu.pharmamobil.presentation.producto.ProductoViewModel
-
-
+import pe.edu.upeu.pharmamobil.data.repository.AuthRepositorioRest
+import pe.edu.upeu.pharmamobil.domain.repository.AuthRepository
+import pe.edu.upeu.pharmamobil.presentation.auth.LoginViewModel
 val networkModule = module {
 
     single {
-        crearHttpClient(get())
+        crearHttpClient(
+            engine = get(),
+            almacenSeguro = get()
+        )
     }
 
     single {
@@ -52,6 +56,13 @@ val dataModule = module {
 
     single<ClienteRepository> {
         ClienteRepositorioEnMemoria()
+    }
+    single<AuthRepository> {
+        AuthRepositorioRest(
+            cliente = get(),
+            urlBase = get(named("urlBase")),
+            almacen = get()
+        )
     }
 }
 
@@ -101,6 +112,9 @@ val presentationModule = module {
             get(),
             get()
         )
+    }
+    viewModel {
+        LoginViewModel(get())
     }
 }
 

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Button
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -48,16 +49,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.koin.compose.KoinContext
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-
+import pe.edu.upeu.pharmamobil.domain.repository.AuthRepository
 import pe.edu.upeu.pharmamobil.navigation.Screen
+import pe.edu.upeu.pharmamobil.presentation.auth.LoginScreen
 import pe.edu.upeu.pharmamobil.presentation.cliente.ClienteScreen
 import pe.edu.upeu.pharmamobil.presentation.components.EstadoVacio
 import pe.edu.upeu.pharmamobil.presentation.inicio.InicioScreen
 import pe.edu.upeu.pharmamobil.presentation.producto.ProductoScreen
 import pe.edu.upeu.pharmamobil.theme.PharmaMobilTheme
 
-/** Una sola fuente para el menu lateral y el titulo de la barra superior. */
 private data class Destino(
     val screen: Screen,
     val titulo: String,
@@ -71,167 +73,105 @@ private val DESTINOS = listOf(
     Destino(Screen.Pedidos, "Pedidos", Icons.Default.ShoppingCart)
 )
 
-
 private val ScreenSaver = Saver<Screen, Int>(
-    save = { pantalla ->
-        DESTINOS.indexOfFirst { it.screen == pantalla }
-    },
-    restore = { indice ->
-        DESTINOS[indice].screen
-    }
+    save = { pantalla -> DESTINOS.indexOfFirst { it.screen == pantalla } },
+    restore = { indice -> DESTINOS.getOrNull(indice)?.screen ?: Screen.Inicio }
 )
 
 @Composable
 fun App() = KoinContext {
-
+    val authRepository: AuthRepository = koinInject()
+    var autenticado by rememberSaveable { mutableStateOf(false) }
     var pantallaActual by rememberSaveable(stateSaver = ScreenSaver) {
-        mutableStateOf<Screen>(Screen.Inicio)
+        mutableStateOf(Screen.Inicio)
     }
-
-    var darkTheme by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    val drawerState = rememberDrawerState(
-        initialValue = DrawerValue.Closed
-    )
-
+    var darkTheme by rememberSaveable { mutableStateOf(false) }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    PharmaMobilTheme(
-        darkTheme = darkTheme
-    ) {
+    PharmaMobilTheme(darkTheme = darkTheme) {
+        if (!autenticado) {
+            LoginScreen(
+                alIniciarSesion = {
+                    autenticado = true
+                    pantallaActual = Screen.Inicio
+                }
+            )
+        } else {
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    ModalDrawerSheet {
+                        DrawerHeader()
+                        HorizontalDivider()
+                        Spacer(Modifier.height(12.dp))
 
-        ModalNavigationDrawer(
+                        DESTINOS.forEach { destino ->
+                            NavigationDrawerItem(
+                                label = { Text(destino.titulo) },
+                                selected = pantallaActual == destino.screen,
+                                onClick = {
+                                    pantallaActual = destino.screen
+                                    scope.launch { drawerState.close() }
+                                },
+                                icon = {
+                                    Icon(destino.icono, contentDescription = null)
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                        }
 
-            drawerState = drawerState,
-
-            drawerContent = {
-
-                ModalDrawerSheet {
-
-                    DrawerHeader()
-
-                    HorizontalDivider()
-
-                    Spacer(
-                        modifier = Modifier.height(12.dp)
-                    )
-
-                    DESTINOS.forEach { destino ->
-
-                        NavigationDrawerItem(
-                            label = {
-                                Text(destino.titulo)
-                            },
-                            selected = pantallaActual == destino.screen,
+                        Spacer(Modifier.weight(1f))
+                        HorizontalDivider()
+                        ModoOscuro(
+                            activo = darkTheme,
+                            onCambiar = { darkTheme = it }
+                        )
+                        Button(
                             onClick = {
-
-                                pantallaActual = destino.screen
-
                                 scope.launch {
+                                    authRepository.cerrarSesion()
                                     drawerState.close()
+                                    pantallaActual = Screen.Inicio
+                                    autenticado = false
                                 }
                             },
-                            icon = {
-                                Icon(
-                                    imageVector = destino.icono,
-                                    contentDescription = null
-                                )
+                            modifier = Modifier.fillMaxWidth().padding(16.dp)
+                        ) {
+                            Text("Cerrar sesión")
+                        }
+                    }
+                }
+            ) {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(tituloDe(pantallaActual)) },
+                            navigationIcon = {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Abrir menú")
+                                }
                             },
-                            modifier = Modifier.padding(
-                                NavigationDrawerItemDefaults.ItemPadding
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface
                             )
                         )
                     }
-
-                    Spacer(
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    HorizontalDivider()
-
-                    ModoOscuro(
-                        activo = darkTheme,
-                        onCambiar = { darkTheme = it }
-                    )
-                }
-            }
-        ) {
-
-            Scaffold(
-
-                topBar = {
-
-                    TopAppBar(
-
-                        title = {
-                            Text(
-                                text = tituloDe(pantallaActual)
-                            )
-                        },
-
-                        navigationIcon = {
-
-                            IconButton(
-                                onClick = {
-
-                                    scope.launch {
-
-                                        drawerState.open()
-                                    }
-                                }
-                            ) {
-
-                                Icon(
-                                    imageVector = Icons.Default.Menu,
-                                    contentDescription = "Abrir menú"
-                                )
-                            }
-                        },
-
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    )
-                }
-
-            ) { paddingValues ->
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-
-                    when (pantallaActual) {
-
-                        Screen.Inicio ->
-                            InicioScreen(
-                                onNavegar = { destino ->
-                                    pantallaActual = destino
-                                }
-                            )
-
-                        Screen.Productos ->
-                            ProductoScreen(
-                                viewModel = koinViewModel()
-                            )
-
-                        Screen.Clientes ->
-                            ClienteScreen(
-                                viewModel = koinViewModel()
-                            )
-
-                        Screen.Pedidos ->
-                            EstadoVacio(
+                ) { paddingValues ->
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(paddingValues)
+                    ) {
+                        when (pantallaActual) {
+                            Screen.Inicio -> InicioScreen(onNavegar = { pantallaActual = it })
+                            Screen.Productos -> ProductoScreen(viewModel = koinViewModel())
+                            Screen.Clientes -> ClienteScreen(viewModel = koinViewModel())
+                            Screen.Pedidos -> EstadoVacio(
                                 icono = Icons.Default.ShoppingCart,
                                 titulo = "Pedidos en construcción",
                                 descripcion = "Este módulo llega en una próxima sesión del curso.",
                                 modifier = Modifier.align(Alignment.Center)
                             )
+                        }
                     }
                 }
             }
@@ -239,42 +179,28 @@ fun App() = KoinContext {
     }
 }
 
-
 @Composable
 private fun DrawerHeader() {
-
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ) {
-
             Icon(
                 imageVector = Icons.Default.LocalPharmacy,
                 contentDescription = null,
-                modifier = Modifier
-                    .padding(10.dp)
-                    .size(28.dp)
+                modifier = Modifier.padding(10.dp).size(28.dp)
             )
         }
-
         Column {
-
+            Text("PharmaMobil", style = MaterialTheme.typography.titleLarge)
             Text(
-                text = "PharmaMobil",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            Text(
-                text = "Gestión farmacéutica",
+                "Gestión farmacéutica",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -282,46 +208,22 @@ private fun DrawerHeader() {
     }
 }
 
-
 @Composable
-private fun ModoOscuro(
-    activo: Boolean,
-    onCambiar: (Boolean) -> Unit
-) {
-
+private fun ModoOscuro(activo: Boolean, onCambiar: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = 28.dp,
-                vertical = 16.dp
-            ),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-
         Icon(
             imageVector = Icons.Default.DarkMode,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        Text(
-            text = "Modo oscuro",
-            modifier = Modifier.weight(1f)
-        )
-
-        Switch(
-            checked = activo,
-            onCheckedChange = onCambiar
-        )
+        Text("Modo oscuro", modifier = Modifier.weight(1f))
+        Switch(checked = activo, onCheckedChange = onCambiar)
     }
 }
 
-
-private fun tituloDe(
-    screen: Screen
-): String {
-
-    return DESTINOS.first { it.screen == screen }.titulo
-}
+private fun tituloDe(screen: Screen): String =
+    DESTINOS.firstOrNull { it.screen == screen }?.titulo ?: "PharmaMobil"

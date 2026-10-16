@@ -12,21 +12,26 @@ import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import pe.edu.upeu.pharmamobil.data.local.AlmacenSeguro
+
 
 fun crearHttpClient(
-    engine: HttpClientEngine
+    engine: HttpClientEngine,
+    almacenSeguro: AlmacenSeguro
 ): HttpClient {
     return HttpClient(engine) {
         expectSuccess = true
+
         install(ContentNegotiation) {
-            json(
-                Json {
-                    ignoreUnknownKeys = true
-                    prettyPrint = true
-                    isLenient = true
-                    encodeDefaults = true
-                }
-            )
+            json(Json {
+                ignoreUnknownKeys = true
+                prettyPrint = true
+                isLenient = true
+                encodeDefaults = true
+            })
         }
 
         install(Logging) {
@@ -35,7 +40,10 @@ fun crearHttpClient(
                     println("KTOR_LOG: $message")
                 }
             }
-            level = LogLevel.ALL
+            level = LogLevel.HEADERS
+            sanitizeHeader { header ->
+                header == HttpHeaders.Authorization
+            }
         }
 
         install(HttpTimeout) {
@@ -46,6 +54,23 @@ fun crearHttpClient(
 
         install(DefaultRequest) {
             header(HttpHeaders.ContentType, "application/json")
+        }
+
+        install(Auth) {
+            bearer {
+                loadTokens {
+                    almacenSeguro.leerToken()?.let { token ->
+                        BearerTokens(token, "")
+                    }
+                }
+
+
+                sendWithoutRequest { request ->
+                    request.url.encodedPathSegments
+                        .takeLast(2) != listOf("auth", "login")
+                }
+
+            }
         }
     }
 }
